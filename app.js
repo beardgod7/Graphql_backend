@@ -1,11 +1,8 @@
 const { configDotenv } = require('dotenv')
-const resolvers = require('./resolvers');
+const resolvers = require('./graphql/resolvers');
 const express = require("express");
 const typeDefs = require('../database_service/graphql/graphqlschema');
 const { ApolloServer } = require("apollo-server-express");
-const ErrorHandler = require("./utils/ErrorHandler");
-const jwt = require('jsonwebtoken')
-const bcrypt = require('bcrypt');
 const Dbconnection = require('../database_service/database/dbconfig/mongodb')
 const app = express();
 
@@ -35,4 +32,5 @@ if (process.env.NODE_ENV !== "PRODUCTION") {
 Dbconnection()
 
 app.listen(process.env.PORT,()=>{
-    console.log( `app is running on http://localhost:${process.env.PORT}`)
+    console.log( `app is running on http://localhost:${process.env.PORT}`) 
+})
