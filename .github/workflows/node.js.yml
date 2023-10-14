@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: echo a string
-        run: echo "hello"
+        run: echo "hello word how are you"
       - name: multiple line
         run: |
           node -v
