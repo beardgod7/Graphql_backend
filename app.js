@@ -1,11 +1,12 @@
-const { configDotenv } = require('dotenv')
-const resolvers = require('./graphql/resolvers');
+const dotenv  = require('dotenv')
+const resolvers = require('../Graphql_backend/graphql/resolver');
 const express = require("express");
-const typeDefs = require('../database_service/graphql/graphqlschema');
+const typeDefs = require('../Graphql_backend/database/graphqlschema/graphschema');
 const { ApolloServer } = require("apollo-server-express");
-const Dbconnection = require('../database_service/database/dbconfig/mongodb')
+const Dbconnection = require('../Graphql_backend/database/dbconfig/mongodb')
 const app = express();
 
+dotenv.config(); 
 
 
 

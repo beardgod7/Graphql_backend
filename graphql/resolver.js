@@ -1,61 +1,153 @@
 const ErrorHandler = require("../utils/ErrorHandler");
 const { ApolloServer } = require('apollo-server-express');
-const User = require('../../database_service/database/model/user');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const { User, Task } = require('../database/model/todo'); 
+
 
 const resolvers = {
   Query: {
     getUser: async (_, { id }) => {
-      return await User.findById(id);
+      try {
+        const user = await User.findById(id).populate('tasks'); 
+        if (!user) {
+          throw new Error("User not found");
+        }
+        return user;
+      } catch (error) {
+        throw new Error(error.message); 
+      }
+    },
+    getTasks: async () => {
+      try {
+        return await Task.find();
+      } catch (error) {
+        throw new Error(error.message);
+      }
+    },
+    getTaskById: async (_, { id }) => {
+      try {
+        const task = await Task.findById(id);
+        if (!task) {
+          throw new Error("Task not found");
+        }
+        return task;
+      } catch (error) {
+        throw new Error(error.message);
+      }
     },
   },
   Mutation: {
-    signup: async (_, { name, email, password,addresses,phoneNumber, }) => {
+    signup: async (_, { name, email, password, addresses, phoneNumber }) => {
       const existingUser = await User.findOne({ email });
       if (existingUser) {
-        return (new ErrorHandler("User already exists", 400));;
+        throw new Error("User already exists");
       }
-  
+
       try {
-        const user = new User({ name, email, password, addresses, phoneNumber });
-  
-        // Save the user to the database
-        await user.save();
-  
+        const hashedPassword = await bcrypt.hash(password, 10); // Hash the password
+        const user = new User({
+          name,
+          email,
+          password: hashedPassword,
+          addresses,
+          phoneNumber,
+        });
+
+        await user.save(); // Save the new user to the database
         return user;
       } catch (error) {
-        return (new ErrorHandler(error.message, 500));
+        throw new Error(error.message); // Pass through any caught errors
       }
     },
     login: async (_, { email, password }) => {
       try {
-        // Validate input: Check if email and password are empty or null
         if (!email || !password) {
-          throw new Error("Please provide all fields!");
+          throw new Error("Please provide all fields");
         }
-  
-        // Find the user by email
-        const user = await User.findOne({ email }).select("+password")
-  
-        // If the user doesn't exist, throw an error
+
+        const user = await User.findOne({ email }).select("+password");
         if (!user) {
           throw new Error("User not found");
         }
-  
-        // Check if the provided password matches the stored hashed password
+
         const passwordMatch = await user.comparePassword(password);
-  
-        // If the passwords don't match, throw an error
         if (!passwordMatch) {
           throw new Error("Invalid password");
         }
-  
-        return "Login successful";
+
+        // Optionally return a JWT token if required for authentication
+        const token = jwt.sign(
+          { userId: user._id },
+          process.env.JWT_SECRET_KEY,
+          {
+            expiresIn: process.env.JWT_EXPIRES,
+          }
+        );
+
+        return {
+          message: "Login successful",
+          token, // Return a token if JWT-based authentication is used
+        };
       } catch (error) {
-        throw new Error(error.message); // Throw the error to trigger GraphQL error handling
+        throw new Error(error.message);
+      }
+    },
+    createTask: async (_, { userId, title, description, dueDate }) => {
+      try {
+        const user = await User.findById(userId);
+        if (!user) {
+          throw new Error("User not found");
+        }
+
+        const task = new Task({
+          title,
+          description,
+          dueDate,
+        });
+
+        await task.save();
+
+        user.tasks.push(task._id);
+        await user.save(); // Save the updated user with the new task
+
+        return task;
+      } catch (error) {
+        throw new Error(error.message);
+      }
+    },
+    updateTask: async (_, { id, title, description, isCompleted, dueDate }) => {
+      try {
+        const task = await Task.findById(id);
+        if (!task) {
+          throw new Error("Task not found");
+        }
+
+        if (title) task.title = title;
+        if (description) task.description = description;
+        if (typeof isCompleted === "boolean") task.isCompleted = isCompleted;
+        if (dueDate) task.dueDate = dueDate;
+
+        task.updatedAt = new Date(); // Update the updatedAt timestamp
+        await task.save(); // Save the updated task
+
+        return task;
+      } catch (error) {
+        throw new Error(error.message); // Handle and pass through errors
+      }
+    },
+    deleteTask: async (_, { id }) => {
+      try {
+        const task = await Task.findByIdAndDelete(id); // Delete the task
+        if (!task) {
+          throw new Error("Task not found");
+        }
+        return true; // Return true on successful deletion
+      } catch (error) {
+        throw new Error(error.message); // Pass through caught errors
       }
     },
   },
 };
+
 module.exports = resolvers;

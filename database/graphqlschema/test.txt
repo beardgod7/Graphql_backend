@@ -1,0 +1,104 @@
+const { ApolloServer, gql } = require("apollo-server-express");
+const { createTestClient } = require("apollo-server-testing");
+const resolvers = require("./resolvers"); // Assuming this is where resolvers are defined
+const typeDefs = require("./typeDefs"); // Assuming this is where typeDefs are defined
+
+// Initialize an ApolloServer instance for testing
+const server = new ApolloServer({
+  typeDefs,
+  resolvers,
+});
+
+const { query, mutate } = createTestClient(server); // Helper methods for testing
+
+describe("GraphQL Queries and Mutations", () => {
+  // Test for getUsers query
+  it("should return a list of users", async () => {
+    const GET_USERS = gql`
+      query {
+        getUsers {
+          id
+          username
+          email
+        }
+      }
+    `;
+
+    const res = await query({ query: GET_USERS });
+
+    expect(res.data).toBeDefined(); // Ensure data is defined
+    expect(res.data.getUsers).toBeInstanceOf(Array); // Should return an array of users
+    expect(res.errors).toBeUndefined(); // No errors should be thrown
+  });
+
+  // Test for getUser query
+  it("should return a user by ID", async () => {
+    const GET_USER = gql`
+      query getUser($id: ID!) {
+        getUser(id: $id) {
+          id
+          username
+          email
+        }
+      }
+    `;
+
+    // Assuming a user with ID "123" exists for testing
+    const res = await query({ query: GET_USER, variables: { id: "123" } });
+
+    expect(res.data).toBeDefined();
+    expect(res.data.getUser).toBeDefined();
+    expect(res.errors).toBeUndefined();
+  });
+
+  // Test for signup mutation
+  it("should create a new user", async () => {
+    const SIGNUP = gql`
+      mutation signup($username: String!, $email: String!, $password: String!) {
+        signup(username: $username, email: $email, password: $password) {
+          id
+          username
+          email
+        }
+      }
+    `;
+
+    const res = await mutate({
+      mutation: SIGNUP,
+      variables: {
+        username: "TestUser",
+        email: "testuser@example.com",
+        password: "123456",
+      },
+    });
+
+    expect(res.data).toBeDefined();
+    expect(res.data.signup).toBeDefined();
+    expect(res.errors).toBeUndefined(); // No errors should be thrown
+  });
+
+  // Test for login mutation
+  it("should login and return a message and token", async () => {
+    const LOGIN = gql`
+      mutation login($email: String!, $password: String!) {
+        login(email: $email, password: $password) {
+          message
+          token
+        }
+      }
+    `;
+
+    const res = await mutate({
+      mutation: LOGIN,
+      variables: {
+        email: "testuser@example.com",
+        password: "123456",
+      },
+    });
+
+    expect(res.data).toBeDefined();
+    expect(res.data.login).toBeDefined();
+    expect(res.data.login.token).toBeDefined(); // Token should be returned
+    expect(res.errors).toBeUndefined(); // No errors should be thrown
+  });
+});
